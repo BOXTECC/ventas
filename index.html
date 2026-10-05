@@ -53,7 +53,7 @@ const view=h=>$('#app').innerHTML=h;
 /* ---------- acceso ---------- */
 function loginView(){$('#nav').hidden=true;view(`<div class=card style="max-width:340px;margin:10vh auto"><h2>BOXTECHCEL</h2><p class=mut>Inicia sesión para continuar</p><input id=em type=email placeholder="Correo"><input id=pw type=password placeholder="Contraseña"><button class=big id=go>Entrar</button></div>`);
  $('#go').onclick=async()=>{const{error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});error?toast('Correo o contraseña incorrectos',1):start()};
- $('#pw').onkeydown=e=>e.key=='Enter'&&$('#go').click()}
+ $('#pw').onkeydown=e=>{if(e.key=='Enter')$('#go').click()}}
 async function start(){const{data:{user}}=await sb.auth.getUser();
  const{data}=await sb.from('perfiles').select('*').eq('id',user.id).maybeSingle();
  if(!data||!data.activo){await sb.auth.signOut();loginView();return toast('Tu usuario no tiene un perfil activo',1)}
