@@ -5,15 +5,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#eef1f4;--card:#fff;--ink:#10222b;--mut:#6a7a85;--ac:#0f9d8a;--acd:#0b7a6b;--line:#d9e0e5;--bad:#c8342b}
-@media(prefers-color-scheme:dark){:root{--bg:#0e1a20;--card:#162830;--ink:#e8eff2;--mut:#8fa3ae;--line:#26414c;--ac:#22b8a3;--acd:#1a9a88}}
+:root[data-theme=dark]{--bg:#0e1a20;--card:#162830;--ink:#e8eff2;--mut:#8fa3ae;--line:#26414c;--ac:#22b8a3;--acd:#1a9a88}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,"Segoe UI",sans-serif}
-input,select,button{font:inherit;color:inherit}
-input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card);margin:3px 0}
+input,select,textarea,button{font:inherit;color:inherit}a{text-decoration:none}
+.pill{background:var(--bg);border:1px solid var(--ac);color:var(--acd);border-radius:99px;padding:2px 10px;font-size:12px;white-space:nowrap}.it2{cursor:pointer}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card);margin:3px 0}
 input.s{width:56px;display:inline-block}input.m{width:96px;display:inline-block}
 button{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:11px 14px;font-weight:600;cursor:pointer}
 button:hover{background:var(--acd)}button.sec{background:transparent;color:var(--ac);border:1px solid var(--ac)}
 button.x{background:transparent;color:var(--bad);padding:4px 8px}button.big{width:100%;padding:15px;font-size:17px;margin-top:8px}
-header{display:flex;gap:6px;align-items:center;padding:8px 12px;background:var(--ink);color:#fff;position:sticky;top:0;z-index:5;overflow-x:auto}
+header{display:flex;gap:6px;align-items:center;padding:8px 12px;background:#0b161c;color:#fff;position:sticky;top:0;z-index:5;overflow-x:auto}
 header b{margin-right:8px;white-space:nowrap}header button{background:transparent;color:#cfe0e6;padding:8px 12px;white-space:nowrap}
 header button.on{background:var(--ac);color:#fff}
 #app{max-width:1100px;margin:0 auto;padding:12px}
@@ -27,7 +28,7 @@ header button.on{background:var(--ac);color:#fff}
 .pays{display:grid;grid-template-columns:1fr 1fr;gap:6px}.pays label{font-size:13px;color:var(--mut)}.pays input{width:100%}
 table{width:100%;border-collapse:collapse}td,th{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}td.n,th.n{text-align:right}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:.2s;z-index:20;max-width:90vw}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0b161c;color:#fff;padding:11px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:.2s;z-index:20;max-width:90vw}
 #toast.show{opacity:1}#toast.err{background:var(--bad)}
 #modal{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;z-index:10;padding:12px}
 #modal.on{display:flex}#mbox{background:var(--card);border-radius:12px;padding:16px;max-width:380px;width:100%;max-height:90vh;overflow:auto}
@@ -49,21 +50,28 @@ function toast(m,bad){const t=$('#toast');t.textContent=m;t.className=bad?'err s
 async function run(p){const r=await p;if(r.error){toast(r.error.message,1);throw r.error}return r.data}
 function modal(h){$('#mbox').innerHTML=h;$('#modal').className='on'}const close=()=>$('#modal').className='';
 const view=h=>$('#app').innerHTML=h;
+function ask(t,fs,ok='Guardar'){return new Promise(res=>{modal(`<h3 style="margin-top:0">${t}</h3>${fs.map(f=>`<label>${f.l}<input id=a_${f.k} type=${f.t||'text'} ${f.t=='number'?'step=any':''} value="${esc(f.v??'')}" placeholder="${esc(f.p||'')}"></label>`).join('')}<div class=g2 style="margin-top:10px"><button id=a_ok>${ok}</button><button class=sec id=a_no>Cancelar</button></div>`);
+ if(fs[0])$('#a_'+fs[0].k).focus();const fin=v=>{close();res(v)};
+ $('#a_no').onclick=()=>fin(null);$('#a_ok').onclick=()=>{const o={};fs.forEach(f=>o[f.k]=$('#a_'+f.k).value.trim());fin(o)};
+ $('#mbox').onkeydown=e=>{if(e.key=='Enter')$('#a_ok').click()};$('#modal').onclick=e=>{if(e.target.id=='modal')fin(null)}})}
+const ico=()=>document.documentElement.dataset.theme=='dark'?'☀️':'🌙';
+try{document.documentElement.dataset.theme=localStorage.getItem('tema')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')}catch{}
+function tema(){const d=document.documentElement,n=d.dataset.theme=='dark'?'light':'dark';d.dataset.theme=n;try{localStorage.setItem('tema',n)}catch{}document.querySelectorAll('.tb').forEach(b=>b.textContent=ico())}
 
 /* ---------- acceso ---------- */
-function loginView(){$('#nav').hidden=true;view(`<div class=card style="max-width:340px;margin:10vh auto"><h2>BOXTECHCEL</h2><p class=mut>Inicia sesión para continuar</p><input id=em type=email placeholder="Correo"><input id=pw type=password placeholder="Contraseña"><button class=big id=go>Entrar</button></div>`);
+function loginView(){$('#nav').hidden=true;view(`<div class=card style="max-width:340px;margin:10vh auto"><button class="sec tb" onclick="tema()" style="float:right;padding:6px 10px">${ico()}</button><h2>BOXTECHCEL</h2><p class=mut>Inicia sesión para continuar</p><input id=em type=email placeholder="Correo"><input id=pw type=password placeholder="Contraseña"><button class=big id=go>Entrar</button></div>`);
  $('#go').onclick=async()=>{const{error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});error?toast('Correo o contraseña incorrectos',1):start()};
  $('#pw').onkeydown=e=>{if(e.key=='Enter')$('#go').click()}}
 async function start(){const{data:{user}}=await sb.auth.getUser();
  const{data}=await sb.from('perfiles').select('*').eq('id',user.id).maybeSingle();
  if(!data||!data.activo){await sb.auth.signOut();loginView();return toast('Tu usuario no tiene un perfil activo',1)}
- S.p=data;S.cats=await run(sb.from('categorias').select('*').order('nombre'));await loadProds();nav();go(S.p.rol=='tecnico'?'inv':'pos')}
+ S.p=data;S.cats=await run(sb.from('categorias').select('*').order('nombre'));await loadProds();await loadCfg();nav();go(S.p.rol=='tecnico'?'rep':'pos')}
 async function loadProds(){S.prods=await run(admin()?sb.from('productos').select('*').eq('activo',true).order('nombre'):sb.from('productos_venta').select('*').order('nombre'))}
 function nav(){const r=S.p.rol,t=[];
- if(r!='tecnico')t.push(['pos','Vender']);t.push(['inv','Inventario']);if(r!='tecnico')t.push(['ventas','Ventas']);if(r=='administrador'||r=='cajero')t.push(['caja','Caja']);
- $('#nav').hidden=false;$('#nav').innerHTML='<b>BOXTECHCEL</b>'+t.map(([k,l])=>`<button data-t=${k}>${l}</button>`).join('')+'<button data-t=out>Salir</button>';
- $('#nav').onclick=e=>{const k=e.target.dataset.t;if(k=='out'){sb.auth.signOut();loginView()}else if(k)go(k)}}
-function go(t){document.querySelectorAll('#nav [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t==t));({pos:posView,inv:invView,ventas:ventasView,caja:cajaView})[t]()}
+ if(r!='tecnico')t.push(['pos','Vender']);t.push(['rep','Reparaciones']);t.push(['inv','Inventario']);if(r!='tecnico')t.push(['ventas','Ventas']);if(r=='administrador'||r=='cajero')t.push(['caja','Caja']);if(r=='administrador')t.push(['cfg','Config']);
+ $('#nav').hidden=false;$('#nav').innerHTML='<b>BOXTECHCEL</b>'+t.map(([k,l])=>`<button data-t=${k}>${l}</button>`).join('')+'<button data-t=tema class=tb style="margin-left:auto">'+ico()+'</button><button data-t=out>Salir</button>';
+ $('#nav').onclick=e=>{const k=e.target.dataset.t;if(k=='tema')return tema();if(k=='out'){sb.auth.signOut();loginView()}else if(k)go(k)}}
+function go(t){document.querySelectorAll('#nav [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t==t));({pos:posView,inv:invView,ventas:ventasView,caja:cajaView,rep:repView,cfg:cfgView})[t]()}
 
 /* ---------- punto de venta ---------- */
 const filt=v=>S.prods.filter(p=>[p.nombre,p.sku,p.codigo_barras,p.marca,p.modelo].join(' ').toLowerCase().includes(v)).slice(0,30);
@@ -71,8 +79,9 @@ function posView(){view(`<div class=pos><div><input id=q placeholder="Buscar por
  const q=$('#q');q.oninput=res;
  q.onkeydown=e=>{if(e.key!='Enter')return;const v=q.value.trim().toLowerCase();const m=S.prods.find(p=>(p.codigo_barras||'').toLowerCase()==v||(p.sku||'').toLowerCase()==v);const l=m?[m]:filt(v);if(l.length==1){add(l[0]);q.value='';res()}};
  $('#res').onclick=e=>{const b=e.target.closest('[data-id]');if(b){add(S.prods.find(p=>p.id==b.dataset.id));q.focus()}};
- $('#svc').onclick=()=>{const d=prompt('Descripción (ej. Instalación de mica)');if(!d)return;const pr=parseFloat(prompt('Precio al cliente'));if(!(pr>=0))return;
-  const c=admin()?parseFloat(prompt('Costo (0 si no tiene)','0'))||0:0;S.cart.push({producto_id:null,tipo:'servicio',descripcion:d,cantidad:1,precio_unitario:pr,costo_unitario:c,max:1e9});drawCart()};
+ $('#svc').onclick=async()=>{const o=await ask('Servicio o artículo sin código',[{k:'d',l:'Descripción',p:'Ej. Instalación de mica'},{k:'p',l:'Precio al cliente',t:'number'},...(admin()?[{k:'c',l:'Costo (0 si no tiene)',t:'number',v:0}]:[])]);
+  if(!o)return;const pr=parseFloat(o.p);if(!o.d||!(pr>=0))return toast('Escribe la descripción y el precio',1);
+  S.cart.push({producto_id:null,tipo:'servicio',descripcion:o.d,cantidad:1,precio_unitario:pr,costo_unitario:parseFloat(o.c)||0,max:1e9});drawCart()};
  res();drawCart()}
 function res(){const v=$('#q').value.trim().toLowerCase(),l=v?filt(v):S.prods.slice(0,12);
  $('#res').innerHTML=l.map(p=>`<button class=it data-id=${p.id}><span>${esc(p.nombre)}<br><small class=mut>${esc(p.sku||'')} ${p.controla_stock?'· existencia '+p.existencia:''}</small></span><b>${money(p.precio)}</b></button>`).join('')||'<p class=mut>Sin resultados. Usa el botón de abajo para vender algo sin código.</p>'}
@@ -115,9 +124,9 @@ function invView(){view(`<input id=q placeholder="Buscar producto" style="margin
  $('#q').oninput=draw;draw();
  if(admin()){$('#nw').onclick=()=>form();$('#tb').onclick=async e=>{const d=e.target.dataset;
   if(d.e)form(S.prods.find(p=>p.id==d.e));
-  if(d.a){const p=S.prods.find(x=>x.id==d.a),n=parseFloat(prompt(`Ajustar existencia de "${p.nombre}" (hoy: ${p.existencia}).\nEscribe cuántas sumar, o un número negativo para restar:`));
-   if(!n)return;const nt=prompt('Motivo del ajuste','Conteo físico');if(nt===null)return;
-   await run(sb.rpc('ajustar_inventario',{p_producto:p.id,p_cantidad:n,p_tipo:n<0&&/merma/i.test(nt)?'merma':'ajuste',p_notas:nt}));await loadProds();invView();toast('Inventario ajustado')}}}}
+  if(d.a){const p=S.prods.find(x=>x.id==d.a),o=await ask('Ajustar existencia: '+esc(p.nombre),[{k:'n',l:'Existencia actual: '+p.existencia+'. Cantidad a sumar (negativa para restar)',t:'number'},{k:'m',l:'Motivo',v:'Conteo físico'}]);
+   if(!o)return;const n=parseFloat(o.n);if(!n)return toast('Escribe una cantidad distinta de cero',1);
+   await run(sb.rpc('ajustar_inventario',{p_producto:p.id,p_cantidad:n,p_tipo:n<0&&/merma/i.test(o.m)?'merma':'ajuste',p_notas:o.m}));await loadProds();invView();toast('Inventario ajustado')}}}}
 function form(p){const f=(k,l,t='text')=>`<label>${l}<input id=f_${k} type=${t} ${t=='number'?'step=any min=0':''} value="${esc(p?p[k]:'')}"></label>`;
  modal(`<h3 style="margin-top:0">${p?'Editar':'Nuevo'} producto</h3>${f('nombre','Nombre')}<div class=g2>${f('sku','SKU')}${f('codigo_barras','Código de barras')}</div>
  <label>Categoría<select id=f_cat><option value="">—</option>${S.cats.map(c=>`<option value=${c.id} ${p&&p.categoria_id==c.id?'selected':''}>${esc(c.nombre)}</option>`).join('')}</select></label>
@@ -142,7 +151,7 @@ async function ventasView(){const d=S.vd||new Date().toLocaleDateString('en-CA')
  view(`<div class=card><div class=row><input type=date id=vd value=${d} style="width:auto"><b>Vendido: ${money(tot)}</b></div><table>${l.map(v=>`<tr><td>${esc(v.folio)}<br><small class=mut>${dt(v.creado_en)}</small></td><td class=n>${money(v.total)}${v.estado=='cancelada'?'<br><small class=bad>cancelada</small>':''}</td><td class=n><button class=sec data-t=${v.id}>Ticket</button>${admin()&&v.estado=='completada'?` <button class=x data-c=${v.id}>Cancelar</button>`:''}</td></tr>`).join('')||'<tr><td class=mut>No hay ventas este día.</td></tr>'}</table></div>`);
  $('#vd').onchange=e=>{S.vd=e.target.value;ventasView()};
  $('#app').onclick=async e=>{const x=e.target.dataset;if(x.t)ticket(x.t);
-  if(x.c){const m=prompt('Motivo de la cancelación (regresa el inventario y el efectivo):');if(!m)return;await run(sb.rpc('cancelar_venta',{p_venta:x.c,p_motivo:m}));await loadProds();ventasView();toast('Venta cancelada')}}}
+  if(x.c){const o=await ask('Cancelar venta',[{k:'m',l:'Motivo (regresa el inventario y el efectivo)'}],'Cancelar venta');if(!o)return;if(!o.m)return toast('Escribe el motivo',1);await run(sb.rpc('cancelar_venta',{p_venta:x.c,p_motivo:o.m}));await loadProds();ventasView();toast('Venta cancelada')}}}
 
 /* ---------- caja ---------- */
 async function cajaView(){const{data:s}=await sb.from('caja_sesiones').select('*').eq('estado','abierta').maybeSingle();
@@ -154,12 +163,59 @@ async function cajaView(){const{data:s}=await sb.from('caja_sesiones').select('*
  <div class=card><table>${m.map(x=>`<tr><td>${dt(x.creado_en)}<br><small class=mut>${esc(x.concepto||x.tipo)}</small></td><td class=n>${money(x.monto)}</td></tr>`).join('')}</table></div>
  <div class=card><h3 style="margin-top:0">Cerrar caja</h3><label>Efectivo contado<input id=ct type=number min=0 step=any></label><button class=big id=cc>Cerrar caja</button></div>`);
  $('#gm').onclick=async()=>{await run(sb.rpc('registrar_movimiento_caja',{p_tipo:$('#mt').value,p_monto:r2($('#mm').value),p_concepto:$('#mc').value}));cajaView();toast('Movimiento registrado')};
- $('#cc').onclick=async()=>{if($('#ct').value==='')return toast('Escribe el efectivo contado',1);if(!confirm('¿Cerrar la caja?'))return;
+ $('#cc').onclick=async()=>{if($('#ct').value==='')return toast('Escribe el efectivo contado',1);if(!await ask('¿Cerrar la caja?',[],'Sí, cerrar'))return;
   const r=await run(sb.rpc('cerrar_caja',{p_contado:r2($('#ct').value),p_notas:null})),df=r.diferencia;
   modal(`<h3 style="margin-top:0">Caja cerrada</h3><div class=row><span>Esperado</span><b>${money(r.efectivo_esperado)}</b></div><div class=row><span>Contado</span><b>${money(r.efectivo_contado)}</b></div>
   <div class=row><span>Diferencia</span><b class=${df==0?'ok':'bad'}>${money(df)}</b></div><hr><div class=row><span>Total vendido</span><b>${money(r.total_vendido)}</b></div>
   ${Object.entries(r.por_metodo||{}).map(([k,v])=>`<div class=row><span>${esc(M.find(m=>m[0]==k)?.[1]||k)}</span><span>${money(v)}</span></div>`).join('')}
   ${admin()?`<div class=row><span>Utilidad estimada</span><b>${money(r.utilidad_estimada)}</b></div>`:''}<button class=big onclick="close_();go('caja')">Listo</button>`)}}
+
+/* ---------- reparaciones ---------- */
+const ES=[['recibido','Recibido'],['en_diagnostico','En diagnóstico'],['diagnostico_realizado','Diagnóstico realizado'],['esperando_autorizacion','Esperando autorización'],['esperando_refaccion','Esperando refacción'],['en_reparacion','En reparación'],['reparado','Reparado'],['probando_equipo','Probando equipo'],['listo_para_entregar','Listo para entregar'],['entregado','Entregado'],['no_reparado','No reparado'],['cancelado','Cancelado']];
+const WA=[['wa_recibido','Ticket recibido'],['wa_diagnostico','Diagnóstico terminado'],['wa_autorizada','Reparación autorizada'],['wa_listo','Equipo listo'],['wa_entregado','Equipo entregado'],['wa_recordatorio','Recordatorio de equipo pendiente']];
+const TIPOS=['Celular','Tablet','Laptop','Computadora','PC','MacBook','iPad','Apple Watch','Smartwatch','Consola','Pantalla/TV','Bocina','Otro'];
+const en=k=>ES.find(e=>e[0]==k)?.[1]||k,fd=d=>d?new Date(d).toLocaleDateString('es-MX'):'—',gar=r=>r.fecha_entrega&&r.garantia_dias?fd(+new Date(r.fecha_entrega)+r.garantia_dias*864e5):'—';
+let CFG={},TEC=[];
+async function loadCfg(){const[c,t]=await Promise.all([sb.from('configuracion').select('*'),sb.from('equipo_nombres').select('*')]);CFG=Object.fromEntries((c.data||[]).map(x=>[x.clave,x.valor]));TEC=t.data||[]}
+async function repView(){S.reps=await run(sb.from('reparaciones').select('*,clientes(nombre,telefono,whatsapp)').order('creado_en',{ascending:false}).limit(300));
+ view(`<div class=g2><input id=q placeholder="Buscar ticket, cliente, teléfono, IMEI, modelo"><select id=fe><option value="">Todos los estados</option><option value=_a>Abiertas</option>${ES.map(e=>`<option value=${e[0]}>${e[1]}</option>`).join('')}</select></div>${S.p.rol!='tecnico'?'<button id=nr class=big>+ Nueva reparación</button>':''}<div id=rl style="margin-top:10px"></div>`);
+ const dr=()=>{const v=$('#q').value.trim().toLowerCase(),f=$('#fe').value;$('#rl').innerHTML=S.reps.filter(r=>(!f||(f=='_a'?!['entregado','cancelado','no_reparado'].includes(r.estado):r.estado==f))&&(!v||[r.folio,r.clientes?.nombre,r.clientes?.telefono,r.clientes?.whatsapp,r.imei,r.serie,r.marca,r.modelo].join(' ').toLowerCase().includes(v))).map(r=>`<div class="card it2" data-r=${r.id}><div class=row><b>${r.folio}</b><span class=pill>${en(r.estado)}</span></div><div>${esc(r.clientes?.nombre)} · ${esc([r.tipo_equipo,r.marca,r.modelo].filter(Boolean).join(' '))}</div><small class=mut>${esc(r.falla)} · prometida ${fd(r.fecha_prometida)}</small></div>`).join('')||'<p class=mut>No hay reparaciones.</p>'};
+ $('#q').oninput=dr;$('#fe').onchange=dr;dr();$('#rl').onclick=e=>{const c=e.target.closest('[data-r]');if(c)repDet(c.dataset.r)};if($('#nr'))$('#nr').onclick=repForm}
+function repForm(){const f=(k,l,t='text',x='')=>`<label>${l}<input id=r_${k} type=${t} ${x}></label>`,n='min=0 step=any';
+ view(`<div class=card><h3 style="margin-top:0">Nueva reparación</h3><div class=g2>${f('nombre','Nombre del cliente *')}${f('telefono','Teléfono','tel')}</div><div class=g2>${f('whatsapp','WhatsApp (si es distinto)','tel')}${f('correo','Correo','email')}</div><hr>
+ <div class=g2><label>Tipo de equipo *<select id=r_tipo>${TIPOS.map(t=>`<option>${t}</option>`).join('')}</select></label>${f('otro','Si es "Otro", escribe cuál')}</div>
+ <div class=g2>${f('marca','Marca')}${f('modelo','Modelo')}</div><div class=g2>${f('color','Color')}${f('capacidad','Capacidad')}</div><div class=g2>${f('imei','IMEI')}${f('serie','Número de serie')}</div>
+ ${f('password_equipo','Contraseña o PIN (si el cliente la da)')}${f('falla','Falla reportada *')}${f('estado_fisico','Estado físico (rayones, golpes, pantalla…)')}${f('accesorios','Accesorios entregados')}${f('observaciones','Observaciones')}<hr>
+ <div class=g2>${f('fecha_prometida','Fecha prometida','date')}<label>Técnico<select id=r_tec><option value="">Sin asignar</option>${TEC.filter(t=>t.rol=='tecnico').map(t=>`<option value=${t.id}>${esc(t.nombre)}</option>`).join('')}</select></label></div>
+ <div class=g2>${f('presupuesto','Presupuesto inicial','number',n)}${f('anticipo','Anticipo','number',n)}</div>
+ <div class=g2><label>Método del anticipo<select id=r_met><option value="">—</option>${M.map(m=>`<option value=${m[0]}>${m[1]}</option>`).join('')}</select></label><label>Garantía<select id=r_gar>${[0,7,15,21,30].map(d=>`<option value=${d}>${d?d+' días':'Sin garantía'}</option>`).join('')}</select></label></div>
+ <div class=g2 style="margin-top:10px"><button id=rg>Guardar y ver ticket</button><button class=sec id=rc>Cancelar</button></div></div>`);
+ $('#rc').onclick=repView;
+ $('#rg').onclick=async()=>{const v=k=>$('#r_'+k).value.trim();if(!v('nombre')||!v('falla'))return toast('Escribe el nombre del cliente y la falla',1);
+  const r=await run(sb.rpc('crear_reparacion',{p:{nombre:v('nombre'),telefono:v('telefono'),whatsapp:v('whatsapp'),correo:v('correo'),tipo_equipo:v('tipo')=='Otro'?(v('otro')||'Otro'):v('tipo'),marca:v('marca'),modelo:v('modelo'),color:v('color'),capacidad:v('capacidad'),imei:v('imei'),serie:v('serie'),password_equipo:v('password_equipo'),falla:v('falla'),estado_fisico:v('estado_fisico'),accesorios:v('accesorios'),observaciones:v('observaciones'),fecha_prometida:v('fecha_prometida'),tecnico_id:$('#r_tec').value,presupuesto:r2(v('presupuesto')),anticipo:r2(v('anticipo')),anticipo_metodo:$('#r_met').value,garantia_dias:+$('#r_gar').value}}));
+  toast('Ticket '+r.folio+' creado');await repView();repDet(r.id)}}
+async function repDet(id){const[r,h]=await Promise.all([run(sb.from('reparaciones').select('*,clientes(*)').eq('id',id).single()),run(sb.from('reparacion_historial').select('*').eq('reparacion_id',id).order('creado_en'))]);
+ const c=r.clientes,tec=TEC.find(t=>t.id==r.tecnico_id),canW=admin()||(S.p.rol=='tecnico'&&r.tecnico_id==S.p.id);
+ modal(`<h3 style="margin-top:0">${r.folio} <span class=pill>${en(r.estado)}</span></h3>
+ <p><b>${esc(c.nombre)}</b> · ${esc(c.telefono||c.whatsapp||'')}<br>${esc([r.tipo_equipo,r.marca,r.modelo,r.color,r.capacidad].filter(Boolean).join(' · '))}<br>IMEI/serie: ${esc(r.imei||r.serie||'—')}${r.password_equipo?' · PIN: '+esc(r.password_equipo):''}<br>Falla: ${esc(r.falla)}<br>Estado físico: ${esc(r.estado_fisico||'—')}<br>Accesorios: ${esc(r.accesorios||'—')}</p>
+ <div class=row><span>Presupuesto ${money(r.presupuesto)} · Anticipo ${money(r.anticipo)}</span><b>Saldo ${money(r.presupuesto-r.anticipo)}</b></div><small class=mut>Técnico: ${esc(tec?.nombre||'sin asignar')} · prometida ${fd(r.fecha_prometida)} · garantía ${r.garantia_dias?r.garantia_dias+' días':'ninguna'}</small>
+ <hr><label>Cambiar estado<select id=d_es>${ES.map(e=>`<option value=${e[0]} ${e[0]==r.estado?'selected':''}>${e[1]}</option>`).join('')}</select></label><input id=d_nt placeholder="Nota (opcional)"><button id=d_ce style="margin-top:6px">Actualizar estado</button>
+ ${canW?`<hr><label>Diagnóstico<input id=d_dg value="${esc(r.diagnostico)}"></label><label>Notas técnicas<input id=d_nn value="${esc(r.notas_tecnicas)}"></label><label>Mano de obra<input id=d_mo type=number min=0 step=any value="${r.mano_obra}"></label><button class=sec id=d_gt>Guardar trabajo técnico</button>`:`<p><b>Diagnóstico:</b> ${esc(r.diagnostico||'—')}</p>`}
+ <hr><b>Historial</b>${h.map(x=>`<div class=row><small>${en(x.estado)}${x.nota?' · '+esc(x.nota):''}</small><small class=mut>${dt(x.creado_en)}</small></div>`).join('')}
+ <hr><div class=g2><button id=d_tk>Ticket</button><button class=sec id=d_wa>WhatsApp…</button></div><button class="sec big" onclick="close_()">Cerrar</button>`);
+ $('#d_ce').onclick=async()=>{await run(sb.rpc('cambiar_estado_reparacion',{p_id:id,p_estado:$('#d_es').value,p_nota:$('#d_nt').value||null}));toast('Estado actualizado');await repView();repDet(id)};
+ if($('#d_gt'))$('#d_gt').onclick=async()=>{await run(sb.rpc('actualizar_trabajo_reparacion',{p_id:id,p_diagnostico:$('#d_dg').value,p_notas:$('#d_nn').value,p_mano_obra:r2($('#d_mo').value)}));toast('Guardado');repDet(id)};
+ $('#d_tk').onclick=()=>repTicket(r,c,tec);$('#d_wa').onclick=()=>repWa(r,c)}
+function repTicket(r,c,tec){modal(`<div class=tk><div style="text-align:center"><b>${esc(CFG.negocio_nombre||'BOXTECHCEL')}</b><br>${esc(CFG.negocio_telefono||'')}<br><b>${r.folio}</b><br>${dt(r.creado_en)}</div><hr>
+ <div>Cliente: ${esc(c.nombre)}<br>Tel: ${esc(c.telefono||c.whatsapp||'')}<br>Equipo: ${esc([r.tipo_equipo,r.marca,r.modelo].filter(Boolean).join(' '))}<br>IMEI/Serie: ${esc(r.imei||r.serie||'—')}<br>Falla: ${esc(r.falla)}<br>Estado físico: ${esc(r.estado_fisico||'—')}<br>Accesorios: ${esc(r.accesorios||'—')}${r.password_equipo?'<br>PIN: '+esc(r.password_equipo):''}<br>Técnico: ${esc(tec?.nombre||'—')}<br>Entrega estimada: ${fd(r.fecha_prometida)}${r.observaciones?'<br>Obs: '+esc(r.observaciones):''}</div><hr>
+ <div class=row><span>Presupuesto</span><span>${money(r.presupuesto)}</span></div><div class=row><span>Anticipo</span><span>${money(r.anticipo)}</span></div><div class=row><b>Saldo</b><b>${money(r.presupuesto-r.anticipo)}</b></div>
+ ${r.garantia_dias?`<div class=row><span>Garantía</span><span>${r.garantia_dias} días${r.fecha_entrega?' (hasta '+gar(r)+')':' desde la entrega'}</span></div>`:''}<hr><small>${esc(CFG.terminos_reparacion||'')}</small></div><div class=g2 style="margin-top:8px"><button onclick="print()">Imprimir</button><button class=sec onclick="close_()">Cerrar</button></div>`)}
+function repWa(r,c){const n=(c.whatsapp||c.telefono||'').replace(/\D/g,'');if(!n)return toast('El cliente no tiene WhatsApp ni teléfono',1);const num=n.length==10?'52'+n:n;
+ const msg=k=>(CFG[k]||'').replace(/\{(\w+)\}/g,(_,x)=>({nombre:c.nombre,folio:r.folio,equipo:[r.marca,r.modelo].filter(Boolean).join(' ')||r.tipo_equipo,falla:r.falla,estado:en(r.estado),recepcion:fd(r.creado_en),estimada:fd(r.fecha_prometida),garantia:gar(r),negocio:CFG.negocio_nombre||'',telefono:CFG.negocio_telefono||''}[x]??''));
+ modal(`<h3 style="margin-top:0">Enviar por WhatsApp</h3>${WA.map(([k,l])=>`<a href="https://wa.me/${num}?text=${encodeURIComponent(msg(k))}" target=_blank rel=noopener><button class=big style="margin:4px 0">${l}</button></a>`).join('')}<button class="sec big" onclick="close_()">Cerrar</button>`)}
+async function cfgView(){await loadCfg();const K=[['negocio_nombre','Nombre del negocio'],['negocio_telefono','Teléfono del negocio'],['terminos_reparacion','Términos y condiciones de reparación'],...WA.map(([k,l])=>[k,'Mensaje WhatsApp: '+l])];
+ view(`<div class=card><h3 style="margin-top:0">Configuración</h3><p class=mut>En los mensajes puedes usar: {nombre} {folio} {equipo} {falla} {estado} {recepcion} {estimada} {garantia} {negocio} {telefono}</p>${K.map(([k,l])=>`<label>${l}<textarea id=c_${k} rows=${k[0]=='w'||k[0]=='t'?5:1}>${esc(CFG[k])}</textarea></label>`).join('')}<button class=big id=cs>Guardar</button></div>`);
+ $('#cs').onclick=async()=>{await run(sb.from('configuracion').upsert(K.map(([k])=>({clave:k,valor:$('#c_'+k).value}))));await loadCfg();toast('Configuración guardada')}}
 
 sb.auth.getSession().then(({data})=>data.session?start():loginView());
 </script></body></html>
