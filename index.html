@@ -50,7 +50,7 @@ function toast(m,bad){const t=$('#toast');t.textContent=m;t.className=bad?'err s
 async function run(p){const r=await p;if(r.error){toast(r.error.message,1);throw r.error}return r.data}
 function modal(h){$('#mbox').innerHTML=h;$('#modal').className='on'}const close=()=>$('#modal').className='';
 const view=h=>$('#app').innerHTML=h;
-function ask(t,fs,ok='Guardar'){return new Promise(res=>{modal(`<h3 style="margin-top:0">${t}</h3>${fs.map(f=>`<label>${f.l}<input id=a_${f.k} type=${f.t||'text'} ${f.t=='number'?'step=any':''} value="${esc(f.v??'')}" placeholder="${esc(f.p||'')}"></label>`).join('')}<div class=g2 style="margin-top:10px"><button id=a_ok>${ok}</button><button class=sec id=a_no>Cancelar</button></div>`);
+function ask(t,fs,ok='Guardar'){return new Promise(res=>{modal(`<h3 style="margin-top:0">${t}</h3>${fs.map(f=>`<label>${f.l}${f.sel?`<select id=a_${f.k}>${f.sel.map(o=>`<option value=${o[0]} ${o[0]==f.v?'selected':''}>${o[1]}</option>`).join('')}</select>`:`<input id=a_${f.k} type=${f.t||'text'} ${f.t=='number'?'step=any':''} value="${esc(f.v??'')}" placeholder="${esc(f.p||'')}">`}</label>`).join('')}<div class=g2 style="margin-top:10px"><button id=a_ok>${ok}</button><button class=sec id=a_no>Cancelar</button></div>`);
  if(fs[0])$('#a_'+fs[0].k).focus();const fin=v=>{close();res(v)};
  $('#a_no').onclick=()=>fin(null);$('#a_ok').onclick=()=>{const o={};fs.forEach(f=>o[f.k]=$('#a_'+f.k).value.trim());fin(o)};
  $('#mbox').onkeydown=e=>{if(e.key=='Enter')$('#a_ok').click()};$('#modal').onclick=e=>{if(e.target.id=='modal')fin(null)}})}
@@ -68,10 +68,10 @@ async function start(){const{data:{user}}=await sb.auth.getUser();
  S.p=data;S.cats=await run(sb.from('categorias').select('*').order('nombre'));await loadProds();await loadCfg();nav();go(S.p.rol=='tecnico'?'rep':'pos')}
 async function loadProds(){S.prods=await run(admin()?sb.from('productos').select('*').eq('activo',true).order('nombre'):sb.from('productos_venta').select('*').order('nombre'))}
 function nav(){const r=S.p.rol,t=[];
- if(r!='tecnico')t.push(['pos','Vender']);t.push(['rep','Reparaciones']);if(r=='administrador'||r=='tecnico')t.push(['pz','Por comprar']);if(r!='tecnico')t.push(['rec','Recargas']);t.push(['inv','Inventario']);if(r!='tecnico')t.push(['ventas','Ventas']);if(r=='administrador'||r=='cajero')t.push(['caja','Caja']);if(r=='administrador')t.push(['cfg','Config']);
+ if(r!='tecnico')t.push(['pos','Vender']);t.push(['rep','Reparaciones']);if(r=='administrador'||r=='tecnico')t.push(['pz','Por comprar']);if(r!='tecnico')t.push(['rec','Recargas']);t.push(['inv','Inventario']);if(r!='tecnico')t.push(['ventas','Ventas']);if(r=='administrador'||r=='cajero')t.push(['caja','Caja']);if(r=='administrador'){t.push(['usr','Usuarios']);t.push(['cfg','Config'])}
  $('#nav').hidden=false;$('#nav').innerHTML='<b>BOXTECHCEL</b>'+t.map(([k,l])=>`<button data-t=${k}>${l}</button>`).join('')+'<button data-t=tema class=tb style="margin-left:auto">'+ico()+'</button><button data-t=out>Salir</button>';
  $('#nav').onclick=e=>{const k=e.target.dataset.t;if(k=='tema')return tema();if(k=='out'){sb.auth.signOut();loginView()}else if(k)go(k)}}
-function go(t){document.querySelectorAll('#nav [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t==t));({pos:posView,inv:invView,ventas:ventasView,caja:cajaView,rep:repView,cfg:cfgView,pz:pzView,rec:recView})[t]()}
+function go(t){document.querySelectorAll('#nav [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t==t));({pos:posView,inv:invView,ventas:ventasView,caja:cajaView,rep:repView,cfg:cfgView,pz:pzView,rec:recView,usr:usrView})[t]()}
 
 /* ---------- punto de venta ---------- */
 const filt=v=>S.prods.filter(p=>[p.nombre,p.sku,p.codigo_barras,p.marca,p.modelo].join(' ').toLowerCase().includes(v)).slice(0,30);
@@ -186,6 +186,18 @@ function recView(){const pct=+CFG.recarga_comision_pct||0;
  $('#app').onclick=e=>{if(e.target.dataset.m)$('#rc_m').value=e.target.dataset.m};
  $('#rc_g').onclick=()=>{const n=$('#rc_n').value.replace(/\D/g,''),m=r2($('#rc_m').value);if(n.length!=10||!(m>0))return toast('Escribe un número de 10 dígitos y el monto',1);
   S.cart.push({producto_id:null,tipo:'servicio',descripcion:`Recarga ${$('#rc_c').value} ${n}`,cantidad:1,precio_unitario:m,costo_unitario:r2(m*(1-pct/100)),max:1e9});go('pos');toast('Recarga agregada. Cobra para terminar')}}
+
+/* ---------- usuarios ---------- */
+const ROLES=[['administrador','Administrador'],['vendedor','Vendedor'],['tecnico','Técnico'],['cajero','Cajero']];
+async function fn(b){const{data,error}=await sb.functions.invoke('usuarios',{body:b});if(error){let m=error.message;try{m=(await error.context.json()).error||m}catch{}toast(m,1);throw error}return data}
+async function usrView(){const l=await run(sb.from('perfiles').select('*').order('creado_en'));
+ view(`<button id=un class=big>+ Nuevo usuario</button><div class=card style="margin-top:10px">${l.map(u=>`<div class=ln><span><b>${esc(u.nombre)}</b> ${u.activo?'':'<small class=bad>(desactivado)</small>'}<br><small class=mut>${(ROLES.find(r=>r[0]==u.rol)||[])[1]}</small></span><span><button class=sec data-e=${u.id}>Editar</button> <button class=sec data-k=${u.id}>Contraseña</button></span></div>`).join('')}</div>`);
+ $('#un').onclick=async()=>{const o=await ask('Nuevo usuario',[{k:'n',l:'Nombre'},{k:'e',l:'Correo',t:'email'},{k:'p',l:'Contraseña (mínimo 8 caracteres)'},{k:'r',l:'Rol',sel:ROLES,v:'vendedor'}],'Crear usuario');
+  if(!o)return;await fn({accion:'crear',nombre:o.n,email:o.e,password:o.p,rol:o.r});await loadCfg();toast('Usuario creado');usrView()};
+ $('#app').onclick=async e=>{const d=e.target.dataset,u=l.find(x=>x.id==(d.e||d.k));if(!u)return;
+  if(d.e){const o=await ask('Editar usuario',[{k:'n',l:'Nombre',v:u.nombre},{k:'r',l:'Rol',sel:ROLES,v:u.rol},{k:'a',l:'Estado',sel:[['1','Activo'],['0','Desactivado']],v:u.activo?'1':'0'}]);
+   if(!o)return;await run(sb.rpc('actualizar_perfil',{p_id:u.id,p_nombre:o.n,p_rol:o.r,p_activo:o.a=='1'}));await loadCfg();toast('Usuario actualizado');usrView()}
+  if(d.k){const o=await ask('Nueva contraseña de '+esc(u.nombre),[{k:'p',l:'Contraseña (mínimo 8 caracteres)'}]);if(!o)return;await fn({accion:'password',id:u.id,password:o.p});toast('Contraseña cambiada')}}}
 
 /* ---------- reparaciones ---------- */
 const ES=[['recibido','Recibido'],['en_diagnostico','En diagnóstico'],['diagnostico_realizado','Diagnóstico realizado'],['esperando_autorizacion','Esperando autorización'],['esperando_refaccion','Esperando refacción'],['en_reparacion','En reparación'],['reparado','Reparado'],['probando_equipo','Probando equipo'],['listo_para_entregar','Listo para entregar'],['entregado','Entregado'],['no_reparado','No reparado'],['cancelado','Cancelado']];
