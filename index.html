@@ -117,11 +117,11 @@ async function ticket(id){const g=async t=>(await sb.from(t).select('*').eq(t=='
 window.close_=close;
 
 /* ---------- inventario ---------- */
-function invView(){view(`<input id=q placeholder="Buscar producto" style="margin-bottom:8px">${admin()?'<button id=nw>+ Nuevo producto</button>':''}<div class=card style="margin-top:10px;overflow-x:auto"><table id=tb></table></div>`);
- const draw=()=>{const v=$('#q').value.trim().toLowerCase(),l=v?filt(v):S.prods;
-  $('#tb').innerHTML=`<tr><th>Producto</th><th class=n>Existencia</th><th class=n>Precio</th>${admin()?'<th class=n>Costo</th><th class=n>Margen</th><th></th>':''}</tr>`+l.map(p=>{const low=admin()&&p.controla_stock&&+p.existencia<=+p.existencia_minima;
-   return`<tr><td>${esc(p.nombre)}<br><small class=mut>${esc(p.sku||'')}</small></td><td class="n ${low?'bad':''}">${p.controla_stock?p.existencia:'—'}</td><td class=n>${money(p.precio)}</td>${admin()?`<td class=n>${money(p.costo)}</td><td class=n>${+p.precio?Math.round((p.precio-p.costo)/p.precio*100)+'%':'—'}</td><td class=n><button class=sec data-e=${p.id}>Editar</button> <button class=sec data-a=${p.id}>±</button></td>`:''}</tr>`}).join('')};
- $('#q').oninput=draw;draw();
+async function invView(){if(admin())await loadAnt();view(`${admin()?antKpi():''}<div class=g2 style="margin-bottom:8px"><input id=q placeholder="Buscar producto">${admin()?`<select id=fi><option value=''>Todos</option><option value=nuevos>Más nuevos</option><option value=viejos>Más antiguos</option><option value=costo>Mayor costo inmovilizado</option><option value=rot>Menor rotación</option><option value=bajo>Stock bajo</option><option value=sinmov>Sin movimiento (60+ días)</option></select>`:''}</div>${admin()?'<button id=nw>+ Nuevo producto</button>':''}<div class=card style="margin-top:10px;overflow-x:auto"><table id=tb></table></div>`);
+ const draw=()=>{const v=$('#q').value.trim().toLowerCase(),l=sortFilt(v?filt(v):S.prods);
+  $('#tb').innerHTML=`<tr><th>Producto</th><th class=n>Existencia</th><th class=n>Precio</th>${admin()?'<th class=n>Costo</th><th class=n>Margen</th><th class=n>Días</th><th class=n>Valor</th><th></th>':''}</tr>`+l.map(p=>{const low=admin()&&p.controla_stock&&+p.existencia<=+p.existencia_minima;
+   return`<tr><td>${esc(p.nombre)}<br><small class=mut>${esc(p.sku||'')}</small></td><td class="n ${low?'bad':''}">${p.controla_stock?p.existencia:'—'}</td><td class=n>${money(p.precio)}</td>${admin()?`<td class=n>${money(p.costo)}</td><td class=n>${+p.precio?Math.round((p.precio-p.costo)/p.precio*100)+'%':'—'}</td>${diasTd(p)}<td class=n><button class=sec data-e=${p.id}>Editar</button> <button class=sec data-a=${p.id}>±</button></td>`:''}</tr>`}).join('')};
+ $('#q').oninput=draw;if($('#fi'))$('#fi').onchange=draw;draw();
  if(admin()){$('#nw').onclick=()=>form();$('#tb').onclick=async e=>{const d=e.target.dataset;
   if(d.e)form(S.prods.find(p=>p.id==d.e));
   if(d.a){const p=S.prods.find(x=>x.id==d.a),o=await ask('Ajustar existencia: '+esc(p.nombre),[{k:'n',l:'Existencia actual: '+p.existencia+'. Cantidad a sumar (negativa para restar)',t:'number'},{k:'m',l:'Motivo',v:'Conteo físico'}]);
@@ -131,13 +131,13 @@ function form(p){const f=(k,l,t='text')=>`<label>${l}<input id=f_${k} type=${t} 
  modal(`<h3 style="margin-top:0">${p?'Editar':'Nuevo'} producto</h3>${f('nombre','Nombre')}<div class=g2>${f('sku','SKU')}${f('codigo_barras','Código de barras')}</div>
  <label>Categoría<select id=f_cat><option value="">—</option>${S.cats.map(c=>`<option value=${c.id} ${p&&p.categoria_id==c.id?'selected':''}>${esc(c.nombre)}</option>`).join('')}</select></label>
  <div class=g2>${f('marca','Marca')}${f('modelo','Modelo')}</div><div class=g2>${f('costo','Costo','number')}${f('precio','Precio','number')}</div>
- <div class=g2>${f('precio_minimo','Precio mínimo','number')}${f('existencia_minima','Existencia mínima','number')}</div>
+ <div class=g2>${f('precio_minimo','Precio mínimo','number')}${f('existencia_minima','Existencia mínima','number')}</div>${f('fecha_entrada','Fecha de entrada al inventario (mide los días en stock)','date')}
  ${p?'':`<label>Existencia inicial<input id=f_ini type=number min=0 step=any value=0></label>`}
  <label><input type=checkbox id=f_cs style="width:auto" ${!p||p.controla_stock?'checked':''}> Controlar existencia (desmarca si es un servicio)</label>
  <div class=g2 style="margin-top:10px"><button id=sv>Guardar</button><button class=sec onclick="close_()">Cancelar</button></div>`);
  $('#sv').onclick=async()=>{const v=k=>$('#f_'+k).value.trim(),n=k=>+v(k)||0;if(!v('nombre'))return toast('Escribe el nombre',1);
   const o={nombre:v('nombre'),sku:v('sku')||null,codigo_barras:v('codigo_barras')||null,categoria_id:+$('#f_cat').value||null,marca:v('marca')||null,modelo:v('modelo')||null,
-   costo:n('costo'),precio:n('precio'),precio_minimo:n('precio_minimo'),existencia_minima:n('existencia_minima'),controla_stock:$('#f_cs').checked};
+   costo:n('costo'),precio:n('precio'),precio_minimo:n('precio_minimo'),existencia_minima:n('existencia_minima'),controla_stock:$('#f_cs').checked,fecha_entrada:v('fecha_entrada')||undefined};
   if(o.precio_minimo>o.precio)return toast('El precio mínimo no puede ser mayor al precio',1);
   if(p)await run(sb.from('productos').update(o).eq('id',p.id));
   else{const r=await run(sb.from('productos').insert(o).select('id').single()),q=n('ini');
@@ -171,8 +171,14 @@ async function cajaView(){const{data:s}=await sb.from('caja_sesiones').select('*
   ${admin()?`<div class=row><span>Utilidad estimada</span><b>${money(r.utilidad_estimada)}</b></div>`:''}<button class=big onclick="close_();go('caja')">Listo</button>`)}}
 
 const tecOpts=s=>TEC.filter(t=>t.rol=='tecnico'||t.rol=='administrador').map(t=>`<option value=${t.id} ${t.id==s?'selected':''}>${esc(t.nombre)} (${t.rol=='tecnico'?'técnico':'administrador'})</option>`).join('');
+function pickRef(id){modal(`<h3 style="margin-top:0">Pieza del inventario</h3><input id=pq placeholder="Buscar pieza" autofocus><div id=pr></div><button class="sec big" id=pk>Cancelar</button>`);
+ const dr=()=>{const v=$('#pq').value.trim().toLowerCase(),l=(v?filt(v):S.prods.filter(p=>/refacc/i.test(S.cats.find(c=>c.id==p.categoria_id)?.nombre||''))).filter(p=>p.controla_stock&&+p.existencia>0).slice(0,15);
+  $('#pr').innerHTML=l.map(p=>`<button class=it data-id=${p.id}><span>${esc(p.nombre)}<br><small class=mut>existencia ${p.existencia}</small></span></button>`).join('')||'<p class=mut>Escribe para buscar. Solo salen piezas con existencia.</p>'};
+ $('#pq').oninput=dr;dr();$('#pk').onclick=()=>repDet(id);
+ $('#pr').onclick=async e=>{const b=e.target.closest('[data-id]');if(!b)return;const p=S.prods.find(x=>x.id==b.dataset.id),o=await ask('Usar: '+esc(p.nombre),[{k:'n',l:'Cantidad (hay '+p.existencia+')',t:'number',v:1}],'Descontar del inventario');
+  if(o){try{await run(sb.rpc('usar_refaccion',{p_reparacion:id,p_producto:p.id,p_cantidad:Math.max(1,parseInt(o.n)||1)}));await loadProds();toast('Pieza descontada del inventario')}catch{}}repDet(id)}}
 function piezasHtml(r,pz){const tot=pz.reduce((a,x)=>a+x.cantidad*x.costo,0);
- return `<hr><b>Piezas</b>${pz.map(x=>`<div class=row><label style="display:flex;gap:6px;align-items:center;margin:0"><input type=checkbox style="width:auto" data-pz=${x.id} ${x.comprada?'checked':''}> ${esc(x.descripcion)} ×${x.cantidad}</label><span>${money(x.cantidad*x.costo)} <button class=x data-pd=${x.id}>✕</button></span></div><small class=mut>${x.comprada?'Comprada':'POR COMPRAR'}${x.proveedor?' · '+esc(x.proveedor):''} · ${money(x.costo)} c/u</small>`).join('')||'<p class=mut>Sin piezas registradas.</p>'}<button class=sec id=d_pa>+ Agregar pieza</button><div class=row><span>Costo piezas + mano de obra</span><b>${money(tot+ +r.mano_obra)}</b></div>${admin()?`<div class=row><span>Utilidad estimada</span><b>${money(r.presupuesto-tot-r.mano_obra)}</b></div>`:''}`}
+ return `<hr><b>Piezas</b>${pz.map(x=>`<div class=row><label style="display:flex;gap:6px;align-items:center;margin:0"><input type=checkbox style="width:auto" data-pz=${x.id} ${x.comprada?'checked':''}> ${esc(x.descripcion)} ×${x.cantidad}</label><span>${money(x.cantidad*x.costo)} <button class=x data-pd=${x.id}>✕</button></span></div><small class=mut>${x.producto_id?'Del inventario':x.comprada?'Comprada':'POR COMPRAR'}${x.proveedor?' · '+esc(x.proveedor):''} · ${money(x.costo)} c/u</small>`).join('')||'<p class=mut>Sin piezas registradas.</p>'}<div class=g2><button class=sec id=d_pa>+ Pieza (por comprar)</button><button class=sec id=d_pi>+ Pieza del inventario</button></div><div class=row><span>Costo piezas + mano de obra</span><b>${money(tot+ +r.mano_obra)}</b></div>${admin()?`<div class=row><span>Utilidad estimada</span><b>${money(r.presupuesto-tot-r.mano_obra)}</b></div>`:''}`}
 async function pzView(){const l=(await run(sb.from('reparacion_piezas').select('*,reparaciones(folio,tipo_equipo,marca,modelo,estado)').eq('comprada',false).order('creado_en'))).filter(x=>!['entregado','cancelado','no_reparado'].includes(x.reparaciones?.estado));
  const tot=l.reduce((a,x)=>a+x.cantidad*x.costo,0);
  view(`<div class=card><div class=row><b>Piezas por comprar: ${l.length}</b><b>${money(tot)}</b></div>${l.map(x=>`<div class=ln><span><b>${esc(x.descripcion)} ×${x.cantidad}</b><br><small class=mut>${x.reparaciones.folio} · ${esc([x.reparaciones.marca,x.reparaciones.modelo].filter(Boolean).join(' ')||x.reparaciones.tipo_equipo)}${x.proveedor?' · '+esc(x.proveedor):''}</small></span><span>${money(x.cantidad*x.costo)}<br><button class=sec data-ok=${x.id}>Ya la compré</button></span></div>`).join('')||'<p class=mut>No hay piezas pendientes de compra.</p>'}${l.length?'<button class="sec big" id=pc>Copiar lista</button>':''}</div>`);
@@ -189,6 +195,18 @@ function recView(){const pct=+CFG.recarga_comision_pct||0;
 
 function imgBlob(f,max,type='image/jpeg'){return new Promise((ok,no)=>{const i=new Image(),u=URL.createObjectURL(f);i.onload=()=>{const k=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b?ok(b):no(new Error('No se pudo leer la imagen')),type,.8)};i.onerror=()=>{toast('Archivo de imagen no válido',1);no(new Error('img'))};i.src=u})}
 const fotosHtml=(ft,urls)=>`<hr><b>Fotos del equipo</b><div class=fotos>${ft.map(x=>{const u=urls.find(z=>z.path==x.ruta)?.signedUrl;return u?`<a href="${u}" target=_blank><img src="${u}"></a>`:''}).join('')||'<small class=mut>Sin fotos</small>'}</div><input type=file id=d_ft accept="image/*" multiple hidden><button class=sec id=d_fb>+ Agregar fotos</button>`;
+async function loadAnt(){S.ant=Object.fromEntries((await run(sb.from('inventario_antiguedad').select('*'))).map(x=>[x.id,x]))}
+const dcol=d=>d>180?'#c8342b':d>90?'#e07b00':d>60?'#b8a000':'inherit',dsm=a=>a&&a.ultima_salida?Math.floor((Date.now()-new Date(a.ultima_salida))/864e5):9999;
+const diasTd=p=>{const a=S.ant?.[p.id];return a&&+p.existencia>0?`<td class=n style="color:${dcol(a.dias)};font-weight:600">${a.dias} d</td><td class=n>${money(a.valor)}</td>`:'<td class=n>—</td><td class=n>—</td>'};
+function sortFilt(l){const f=$('#fi')?.value,A=S.ant||{},d=p=>A[p.id]?.dias??0,st=p=>+p.existencia>0;
+ if(f=='nuevos')return l.filter(st).sort((a,b)=>d(a)-d(b));if(f=='viejos')return l.filter(st).sort((a,b)=>d(b)-d(a));
+ if(f=='costo')return l.filter(st).sort((a,b)=>(A[b.id]?.valor||0)-(A[a.id]?.valor||0));
+ if(f=='rot')return l.filter(st).sort((a,b)=>dsm(A[b.id])-dsm(A[a.id]));
+ if(f=='bajo')return l.filter(p=>p.controla_stock&&+p.existencia<=+p.existencia_minima);
+ if(f=='sinmov')return l.filter(p=>st(p)&&dsm(A[p.id])>60).sort((a,b)=>dsm(A[b.id])-dsm(A[a.id]));return l}
+function antKpi(){const v=Object.values(S.ant||{}).filter(x=>+x.existencia>0),sum=a=>a.reduce((t,x)=>t+ +x.valor,0),o90=v.filter(x=>x.dias>90),o180=v.filter(x=>x.dias>180),bajo=Object.values(S.ant||{}).filter(x=>+x.existencia<=+x.existencia_minima);
+ const k=(t,n,sub)=>`<div class=card style="margin:0"><small class=mut>${t}</small><div class=tot>${n}</div><small class=mut>${sub||''}</small></div>`;
+ return `<div class=g2 style="margin-bottom:8px">${k('Dinero en inventario',money(sum(v)),v.length+' productos con existencia')}${k('Stock bajo',bajo.length,'en o bajo el mínimo')}${k('Más de 90 días',o90.length,money(sum(o90))+' detenidos')}${k('Más de 180 días',o180.length,money(sum(o180))+' detenidos')}</div>`}
 /* ---------- usuarios ---------- */
 const ROLES=[['administrador','Administrador'],['vendedor','Vendedor'],['tecnico','Técnico'],['cajero','Cajero']];
 async function fn(b){const{data,error}=await sb.functions.invoke('usuarios',{body:b});if(error){let m=error.message;try{m=(await error.context.json()).error||m}catch{}toast(m,1);throw error}return data}
@@ -248,6 +266,7 @@ async function repDet(id){const[r,h,pz,pg,ft]=await Promise.all([run(sb.from('re
   if(o){try{await run(sb.rpc('registrar_pago_reparacion',{p_id:id,p_monto:r2(o.m),p_metodo:o.t}));toast('Pago registrado')}catch{}}repDet(id)};
  if($('#d_pr'))$('#d_pr').onclick=async()=>{const o=await ask('Cambiar presupuesto',[{k:'m',l:'Nuevo presupuesto',t:'number',v:r.presupuesto}]);
   if(o){try{await run(sb.rpc('actualizar_presupuesto',{p_id:id,p_monto:r2(o.m)}));toast('Presupuesto actualizado');await repView()}catch{}}repDet(id)};
+ if($('#d_pi'))$('#d_pi').onclick=()=>pickRef(id);
  $('#d_fb').onclick=()=>$('#d_ft').click();
  $('#d_ft').onchange=async e=>{const fs=[...e.target.files];if(!fs.length)return;toast('Subiendo '+fs.length+' foto(s)…');
   try{for(const f of fs){const b=await imgBlob(f,1280),ruta=`${id}/${Date.now()}_${Math.random().toString(36).slice(2,7)}.jpg`;
